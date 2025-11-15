@@ -1,0 +1,48 @@
+class ErrorResponse extends Error {
+    constructor(message, statusCode) {
+      super(message);
+      this.statusCode = statusCode;
+  
+      // Capture stack trace, excluding constructor call from it
+      Error.captureStackTrace(this, this.constructor);
+    }
+  
+    // Static method to create common error responses
+    static badRequest(msg = 'Bad Request') {
+      return new ErrorResponse(msg, 400);
+    }
+  
+    static unauthorized(msg = 'Unauthorized') {
+      return new ErrorResponse(msg, 401);
+    }
+  
+    static forbidden(msg = 'Forbidden') {
+      return new ErrorResponse(msg, 403);
+    }
+  
+    static notFound(msg = 'Resource not found') {
+      return new ErrorResponse(msg, 404);
+    }
+  
+    static conflict(msg = 'Conflict occurred') {
+      return new ErrorResponse(msg, 409);
+    }
+  
+    static serverError(msg = 'Internal Server Error') {
+      return new ErrorResponse(msg, 500);
+    }
+  
+    // Method to send formatted error response
+    send(res) {
+      res.status(this.statusCode).json({
+        success: false,
+        error: {
+          message: this.message,
+          statusCode: this.statusCode,
+          stack: process.env.NODE_ENV === 'development' ? this.stack : undefined
+        }
+      });
+    }
+  }
+  
+  module.exports = ErrorResponse;

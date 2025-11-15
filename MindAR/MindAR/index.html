@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MindAR Tap to Start</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; }
+
+    #start-button {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100vh;
+      background: black;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      cursor: pointer;
+      z-index: 20;
+    }
+
+    #scan-screen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100vh;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 22px;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 15;
+    }
+
+    #ar-container {
+      width: 100%;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TAP TO START -->
+  <div id="start-button">Tap to Start AR</div>
+
+  <!-- Scan screen -->
+  <div id="scan-screen">Point your camera at the card</div>
+
+  <div id="ar-container"></div>
+
+  <script type="module">
+    const startBtn = document.getElementById("start-button");
+    const scanScreen = document.getElementById("scan-screen");
+
+    let started = false;
+
+    startBtn.onclick = async () => {
+      if (started) return;
+      started = true;
+
+      // Hide start screen, show scanning
+      startBtn.style.display = "none";
+      scanScreen.style.display = "flex";
+
+      // -------- MindAR Setup --------
+      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: document.querySelector("#ar-container"),
+        imageTargetSrc: "./assets/target/targets.mind",
+      });
+
+      const { renderer, scene, camera } = mindarThree;
+
+      // -------- Video Setup --------
+      const video = document.createElement("video");
+      video.src = "./assets/video/video.mp4";
+      video.loop = true;
+      video.muted = true; // needed for autoplay on mobile
+
+      // Wait for video metadata (fixes texture issues)
+      await video.load;
+
+      const tex = new THREE.VideoTexture(video);
+      const mat = new THREE.MeshBasicMaterial({ map: tex });
+      const geo = new THREE.PlaneGeometry(1, 0.56);
+      const mesh = new THREE.Mesh(geo, mat);
+
+      // Add to target anchor
+      const anchor = mindarThree.addAnchor(0);
+      anchor.group.add(mesh);
+
+      // When marker found → play video + remove scanning UI
+      anchor.onTargetFound = () => {
+        scanScreen.style.display = "none";
+        video.play();
+      };
+
+      // When lost → pause + show scanning again
+      anchor.onTargetLost = () => {
+        scanScreen.style.display = "flex";
+        video.pause();
+      };
+
+      // Start AR Engine
+      await mindarThree.start();
+
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
+    };
+  </script>
+
+</body>
+</html>
